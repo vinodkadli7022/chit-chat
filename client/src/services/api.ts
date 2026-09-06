@@ -1,6 +1,10 @@
 import { User, Conversation, Message } from '../types';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : (typeof window !== 'undefined' && window.location.port === '5173'
+      ? 'http://localhost:5000/api'
+      : '/api');
 
 export class ApiService {
   private static token: string | null = localStorage.getItem('token');

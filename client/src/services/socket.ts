@@ -1,7 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import { ApiService } from './api';
 
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ||
+  (typeof window !== 'undefined' && window.location.port === '5173'
+    ? 'http://localhost:5000'
+    : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000'));
 
 class SocketService {
   private socket: Socket | null = null;
