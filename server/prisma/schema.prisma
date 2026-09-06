@@ -1,0 +1,74 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  avatar       String?
+  isOnline     Boolean   @default(false)
+  lastSeenAt   DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  type      String   @default("DIRECT") // DIRECT | GROUP
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([updatedAt])
+}
+
+model ConversationParticipant {
+  id                String   @id @default(uuid())
+  conversationId    String
+  userId            String
+  role              String   @default("MEMBER") // MEMBER | ADMIN
+  lastReadMessageId String?
+  unreadCount       Int      @default(0)
+  joinedAt          DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, conversationId])
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  tempId         String?  // Client-provided idempotency key
+  conversationId String
+  senderId       String
+  content        String?
+  mediaType      String   @default("TEXT") // TEXT | IMAGE | GIF | STICKER
+  mediaUrl       String?
+  mediaThumbnail String?
+  status         String   @default("SENT") // SENT | DELIVERED | READ
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, tempId])
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([conversationId, senderId])
+}
