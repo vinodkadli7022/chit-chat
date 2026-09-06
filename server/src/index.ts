@@ -42,49 +42,11 @@ app.use('/uploads', express.static(config.uploadDir, {
   immutable: true
 }));
 
-// Root endpoint: welcome message & redirect to frontend
-app.get('/', (req, res) => {
-  res.send(`<!DOCTYPE html>
-<html>
-  <head>
-    <title>ChatStream API</title>
-    <meta http-equiv="refresh" content="1; url=http://localhost:5173" />
-    <style>
-      body { font-family: system-ui, sans-serif; background: #090d16; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-      .card { background: #131b2e; border: 1px solid #1e293b; padding: 2rem; border-radius: 1rem; text-align: center; max-width: 480px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
-      h2 { margin: 0 0 0.5rem 0; color: #fff; }
-      p { color: #94a3b8; font-size: 0.875rem; }
-      a { display: inline-block; margin-top: 1rem; padding: 0.6rem 1.2rem; background: #4f46e5; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem; }
-      a:hover { background: #4338ca; }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h2>⚡ ChatStream Messaging API</h2>
-      <p>Backend services and WebSockets are live on port 5000.</p>
-      <a href="http://localhost:5173">Open ChatStream Web App (port 5173) &rarr;</a>
-    </div>
-  </body>
-</html>`);
-});
-
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/conversations', messageRoutes);
 app.use('/api/media', mediaRoutes);
-
-// Serve production client build if available
-const clientDistPath = path.resolve(__dirname, '../../client/dist');
-if (fs.existsSync(clientDistPath)) {
-  app.use(express.static(clientDistPath));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path === '/health') {
-      return next();
-    }
-    res.sendFile(path.join(clientDistPath, 'index.html'));
-  });
-}
 
 // Healthcheck & diagnostic route
 app.get('/health', (req, res) => {
@@ -94,6 +56,34 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Serve production client build (SPA)
+const possibleClientPaths = [
+  path.resolve(__dirname, '../../client/dist'),
+  path.resolve(__dirname, '../client/dist'),
+  path.resolve(process.cwd(), '../client/dist'),
+  path.resolve(process.cwd(), 'client/dist'),
+];
+const clientDistPath = possibleClientPaths.find((p) => fs.existsSync(p));
+
+if (clientDistPath) {
+  console.log(`Serving static client from: ${clientDistPath}`);
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path === '/health') {
+      return next();
+    }
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+} else {
+  // Fallback if client is not built
+  app.get('/', (req, res) => {
+    res.json({
+      status: 'ChatStream API Live',
+      message: 'Client dist not found. Run npm run build in client directory.'
+    });
+  });
+}
 
 // Setup Socket.IO real-time events
 setupSocketIO(io);
