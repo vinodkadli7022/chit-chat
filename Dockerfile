@@ -24,6 +24,8 @@ RUN npm run build
 
 ENV NODE_ENV=production
 ENV PORT=5000
+ENV DATABASE_URL="file:./dev.db"
+ENV JWT_SECRET="super-secret-production-jwt-key-32-bytes"
 EXPOSE 5000
 
 # Push DB schema and start unified server
